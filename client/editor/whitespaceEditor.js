@@ -162,6 +162,71 @@ function classifyLineChars(line) {
   return classes;
 }
 
+/**
+ * Computes syntax highlight class per character index for HTML lines.
+ */
+function classifyHtmlLineChars(line) {
+  const classes = new Array(line.length).fill('tok-plain');
+  let i = 0;
+  while (i < line.length) {
+    if (line.startsWith('<!--', i)) {
+      const end = line.indexOf('-->', i + 4);
+      const stop = end === -1 ? line.length : end + 3;
+      for (let k = i; k < stop; k++) classes[k] = 'tok-comment';
+      i = stop;
+      continue;
+    }
+
+    if (line[i] === '<') {
+      classes[i] = 'tok-operator';
+      i++;
+      if (i < line.length && (line[i] === '/' || line[i] === '!')) {
+        classes[i] = 'tok-operator';
+        i++;
+      }
+      // Tag name
+      while (i < line.length && /[a-zA-Z0-9_-]/.test(line[i])) {
+        classes[i] = 'tok-keyword';
+        i++;
+      }
+      // Attributes until '>'
+      while (i < line.length && line[i] !== '>') {
+        const ch = line[i];
+        if (ch === '"' || ch === "'") {
+          const quote = ch;
+          let j = i + 1;
+          while (j < line.length && line[j] !== quote) j++;
+          const end = Math.min(line.length - 1, j);
+          for (let k = i; k <= end; k++) classes[k] = 'tok-string';
+          i = end + 1;
+          continue;
+        }
+        if (ch === '=' || ch === '/') {
+          classes[i] = 'tok-operator';
+          i++;
+          continue;
+        }
+        if (/[a-zA-Z_-]/.test(ch)) {
+          while (i < line.length && /[a-zA-Z0-9_-]/.test(line[i])) {
+            classes[i] = 'tok-builtin';
+            i++;
+          }
+          continue;
+        }
+        i++;
+      }
+      if (i < line.length && line[i] === '>') {
+        classes[i] = 'tok-operator';
+        i++;
+      }
+      continue;
+    }
+
+    i++;
+  }
+  return classes;
+}
+
 export class WhitespaceEditor {
   constructor(containerEl, callbacks = {}) {
     this.containerEl = containerEl;
@@ -174,6 +239,7 @@ export class WhitespaceEditor {
     this.redoStack = [];
     this.errorLines = new Map(); // 1-based lineNum -> errorType
     this.locked = false;
+    this.language = 'python';
 
     this.containerEl.setAttribute('tabindex', '0');
     this.containerEl.setAttribute('role', 'textbox');
@@ -244,6 +310,10 @@ export class WhitespaceEditor {
   setLocked(isLocked) {
     this.locked = Boolean(isLocked);
     this.containerEl.classList.toggle('is-locked', this.locked);
+  }
+
+  setLanguage(lang) {
+    this.language = lang === 'html' ? 'html' : 'python';
   }
 
   setHazardVision(enabled) {
@@ -1754,7 +1824,9 @@ export class WhitespaceEditor {
       const leadingLen = getLeadingLength(line);
       const trailingStart = getTrailingStart(line);
       const isBlankDirty = line.trim() === '' && line.length > 0;
-      const tokenClasses = classifyLineChars(line);
+      const tokenClasses = this.language === 'html'
+        ? classifyHtmlLineChars(line)
+        : classifyLineChars(line);
 
       for (let colIdx = 0; colIdx < line.length; colIdx++) {
         if (rowCarets && rowCarets.has(colIdx)) {

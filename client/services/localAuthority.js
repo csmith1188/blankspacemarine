@@ -56,6 +56,7 @@ function sanitizePuzzleForClient(puzzle, index, total) {
 
   return {
     id: puzzle.id,
+    language: puzzle.language || 'python',
     index,
     total,
     sector: puzzle.sector,

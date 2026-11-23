@@ -156,10 +156,17 @@ export class GameController {
       .join('');
 
     this.dom.terminalStatus.textContent = 'STANDBY';
-    this.dom.terminalOutput.innerHTML =
-      '<p class="term-muted">Fix the Python whitespace above, then press <strong>Ctrl+Enter</strong> (or click <strong>PURGE &amp; TEST</strong>).</p>';
+    const isHtml = puzzle.language === 'html';
+    const fileNameEl = document.querySelector('.editor-file-info .file-name');
+    if (fileNameEl) {
+      fileNameEl.textContent = isHtml ? 'mission_page.html' : 'mission_script.py';
+    }
+    this.dom.terminalOutput.innerHTML = isHtml
+      ? '<p class="term-muted">Format the HTML whitespace above, then press <strong>Ctrl+Enter</strong> (or click <strong>PURGE &amp; TEST</strong>).</p>'
+      : '<p class="term-muted">Fix the Python whitespace above, then press <strong>Ctrl+Enter</strong> (or click <strong>PURGE &amp; TEST</strong>).</p>';
 
     this.editor.setLocked(false);
+    this.editor.setLanguage(puzzle.language || 'python');
     this.editor.setCode(puzzle.brokenCode);
     this.editor.focus();
   }

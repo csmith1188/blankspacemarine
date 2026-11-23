@@ -4,6 +4,7 @@
  */
 
 import { BEGINNER_CONDITIONAL_PUZZLES } from './conditionalsCampaign.js';
+import { HTML_FORMATTING_PUZZLES } from './htmlCampaign.js';
 
 export const CONCEPT_METADATA = {
   unexpected_indent: {
@@ -54,7 +55,17 @@ export const CONCEPT_METADATA = {
   vscode_hotkeys: {
     id: 'vscode_hotkeys',
     label: 'VS Code Multi-Cursor & Line Hotkeys',
-    description: 'Use Ctrl+Alt+Up/Down (multi-cursor), Shift+Arrows + Tab, End, and Alt+Up/Down to edit whole blocks at speed.'
+    description: 'Use Ctrl+Alt+Up/Down (multi-cursor), Ctrl+D, Shift+Arrows + Tab, and End to edit whole blocks at speed.'
+  },
+  html_nesting: {
+    id: 'html_nesting',
+    label: 'HTML Tag Nesting (4-Space Steps)',
+    description: 'Indent child HTML elements 4 spaces deeper than their parent opening tag.'
+  },
+  html_closing_tag: {
+    id: 'html_closing_tag',
+    label: 'HTML Closing Tag Alignment',
+    description: 'Align every closing tag (</div>, </section>, </html>) directly beneath its matching opening tag.'
   }
 };
 
@@ -773,6 +784,12 @@ export const CAMPAIGNS = [
     name: 'Main Campaign: Orbital Purge',
     subtitle: 'All 4 Sectors — Loops, Functions & Conditionals',
     puzzles: PUZZLES
+  },
+  {
+    id: 'html',
+    name: 'HTML Campaign: Markup Formatter',
+    subtitle: 'Clean 4-Space HTML Tag Nesting & Alignment',
+    puzzles: HTML_FORMATTING_PUZZLES
   }
 ];
 
@@ -780,6 +797,7 @@ export function getPuzzleById(puzzleId) {
   return (
     PUZZLES.find((p) => p.id === puzzleId) ||
     BEGINNER_CONDITIONAL_PUZZLES.find((p) => p.id === puzzleId) ||
+    HTML_FORMATTING_PUZZLES.find((p) => p.id === puzzleId) ||
     null
   );
 }
@@ -788,6 +806,9 @@ export function getPuzzlesForSector(sectorId) {
   const key = String(sectorId || 'all');
   if (key === 'campaign:beginner' || key === 'beginner') {
     return BEGINNER_CONDITIONAL_PUZZLES.slice();
+  }
+  if (key === 'campaign:html' || key === 'html') {
+    return HTML_FORMATTING_PUZZLES.slice();
   }
   if (key === 'campaign:main' || key === 'main' || key === 'all') {
     return PUZZLES.slice();

@@ -96,6 +96,7 @@ export function validateSubmission(puzzle, submittedCode) {
   }
 
   const canonical = acceptedSolutions[0];
+  const isHtml = puzzle && puzzle.language === 'html';
   const expectedLines = canonical.split('\n');
   const actualLines = normalizedSubmitted.split('\n');
   const issues = [];
@@ -103,14 +104,18 @@ export function validateSubmission(puzzle, submittedCode) {
   const expectedStruct = analyzeStructure(expectedLines);
   const actualStruct = analyzeStructure(actualLines);
 
-  // Guard 1: anti-tamper check on the sequence of non-empty Python code lines
+  // Guard 1: anti-tamper check on the sequence of non-empty code lines
   if (actualStruct.codeLines.length !== expectedStruct.codeLines.length) {
     issues.push({
       line: 1,
       column: 1,
-      errorType: 'SyntaxError',
-      pythonMessage: `SyntaxError: expected ${expectedStruct.codeLines.length} Python code lines, found ${actualStruct.codeLines.length}`,
-      explanation: 'Only whitespace and blank lines may be added or removed. Keep all Python statements intact.',
+      errorType: isHtml ? 'HTMLFormatError' : 'SyntaxError',
+      pythonMessage: isHtml
+        ? `HTMLFormatError: expected ${expectedStruct.codeLines.length} HTML lines, found ${actualStruct.codeLines.length}`
+        : `SyntaxError: expected ${expectedStruct.codeLines.length} Python code lines, found ${actualStruct.codeLines.length}`,
+      explanation: isHtml
+        ? 'Only whitespace and blank lines may be added or removed. Keep all HTML tags intact.'
+        : 'Only whitespace and blank lines may be added or removed. Keep all Python statements intact.',
       concept: 'alignment'
     });
     return {
@@ -127,9 +132,13 @@ export function validateSubmission(puzzle, submittedCode) {
       issues.push({
         line: act.lineNum,
         column: 1,
-        errorType: 'SyntaxError',
-        pythonMessage: `SyntaxError: Python statement on line ${act.lineNum} is out of order or modified`,
-        explanation: 'Keep the original Python statements in their proper order (use Alt+Up/Down if you shifted a line).',
+        errorType: isHtml ? 'HTMLFormatError' : 'SyntaxError',
+        pythonMessage: isHtml
+          ? `HTMLFormatError: HTML line ${act.lineNum} is out of order or modified`
+          : `SyntaxError: Python statement on line ${act.lineNum} is out of order or modified`,
+        explanation: isHtml
+          ? 'Keep the original HTML tags in their proper order.'
+          : 'Keep the original Python statements in their proper order (use Alt+Up/Down if you shifted a line).',
         concept: 'alignment'
       });
       return {
@@ -194,7 +203,7 @@ export function validateSubmission(puzzle, submittedCode) {
 
     // A. Blank-line convention check between previous code line and this code line
     if (i > 0) {
-      const prevOpenedBlock = prevTrimmed.endsWith(':') && BLOCK_OPENERS.test(prevTrimmed);
+      const prevOpenedBlock = !isHtml && prevTrimmed.endsWith(':') && BLOCK_OPENERS.test(prevTrimmed);
 
       if (prevOpenedBlock && act.blanksBefore > 0) {
         issues.push({
@@ -211,7 +220,9 @@ export function validateSubmission(puzzle, submittedCode) {
           column: 1,
           errorType: 'BlankLineError',
           pythonMessage: `BlankLineError: missing blank line before line ${lineNum}`,
-          explanation: 'PEP 8: Insert a blank line (Enter / Ctrl+Shift+Enter) to cleanly separate top-level functions and code sections.',
+          explanation: isHtml
+            ? 'Insert a blank line (Enter / Ctrl+Shift+Enter) to cleanly separate major HTML sections.'
+            : 'PEP 8: Insert a blank line (Enter / Ctrl+Shift+Enter) to cleanly separate top-level functions and code sections.',
           concept: 'blank_lines'
         });
       } else if (act.blanksBefore > exp.blanksBefore) {
@@ -223,7 +234,7 @@ export function validateSubmission(puzzle, submittedCode) {
             ? `BlankLineError: unexpected blank line on line ${act.blankStartLine}`
             : `BlankLineError: too many blank lines before line ${lineNum} (expected ${exp.blanksBefore}, found ${act.blanksBefore})`,
           explanation: exp.blanksBefore === 0
-            ? 'Remove this extra blank line to keep statements in the same section together.'
+            ? (isHtml ? 'Remove this extra blank line inside the HTML element block.' : 'Remove this extra blank line to keep statements in the same section together.')
             : `Use exactly ${exp.blanksBefore} blank line here to separate sections cleanly.`,
           concept: 'blank_lines'
         });
@@ -238,7 +249,9 @@ export function validateSubmission(puzzle, submittedCode) {
         column: tabIdx + 1,
         errorType: 'TabError',
         pythonMessage: `TabError: inconsistent use of tabs and spaces in indentation (line ${lineNum})`,
-        explanation: 'Python PEP 8 forbids mixing tabs with spaces. Delete the tab (->) and use 4 spaces per indent level.',
+        explanation: isHtml
+          ? 'Use consistent 4-space indentation instead of tab characters (->) in HTML.'
+          : 'Python PEP 8 forbids mixing tabs with spaces. Delete the tab (->) and use 4 spaces per indent level.',
         concept: 'no_tabs'
       });
     }
@@ -248,9 +261,13 @@ export function validateSubmission(puzzle, submittedCode) {
       issues.push({
         line: lineNum,
         column: getLeadingWhitespace(act.raw).length + 1,
-        errorType: 'SyntaxError',
-        pythonMessage: `SyntaxError: invalid spacing inside statement on line ${lineNum}`,
-        explanation: 'Check the spaces inside the code statement itself — keep single spaces between Python keywords and expressions.',
+        errorType: isHtml ? 'HTMLFormatError' : 'SyntaxError',
+        pythonMessage: isHtml
+          ? `HTMLFormatError: extra or missing spaces inside HTML tag on line ${lineNum}`
+          : `SyntaxError: invalid spacing inside statement on line ${lineNum}`,
+        explanation: isHtml
+          ? 'Check spacing inside the HTML tag — keep a single space between tag names and attributes.'
+          : 'Check the spaces inside the code statement itself — keep single spaces between Python keywords and expressions.',
         concept: 'alignment'
       });
     }
@@ -275,65 +292,81 @@ export function validateSubmission(puzzle, submittedCode) {
     const actualSpaces = actualLeading.length;
 
     if (!actualLeading.includes('\t') && actualSpaces !== expectedSpaces) {
-      const prevOpenedBlock = prevTrimmed.endsWith(':') && BLOCK_OPENERS.test(prevTrimmed);
-      const isBranch = BRANCH_KEYWORDS.test(act.trimmed);
-
-      if (prevOpenedBlock && actualSpaces <= prevActualIndent && expectedSpaces > prevExpectedIndent) {
-        const kw = extractKeyword(prevTrimmed);
+      if (isHtml) {
+        const isClosingTag = /^<\//.test(act.trimmed);
         issues.push({
           line: lineNum,
           column: 1,
-          errorType: 'IndentationError',
-          pythonMessage: `IndentationError: expected an indented block after '${kw}' statement on line ${prevActualLineNum}`,
-          explanation: `Because line ${prevActualLineNum} ends with a colon (:), line ${lineNum} must be indented ${expectedSpaces} spaces.`,
-          concept: expectedSpaces > 4 ? 'nesting' : 'block_indent'
-        });
-      } else if (isBranch) {
-        const kw = extractKeyword(act.trimmed);
-        issues.push({
-          line: lineNum,
-          column: 1,
-          errorType: 'IndentationError',
-          pythonMessage: `IndentationError: '${kw}' on line ${lineNum} does not align with its matching block header`,
-          explanation: `Align '${kw}' at ${expectedSpaces} spaces so it matches its opening statement.`,
-          concept: 'branch_alignment'
-        });
-      } else if (expectedSpaces === 0 && actualSpaces > 0 && prevExpectedIndent === 0) {
-        issues.push({
-          line: lineNum,
-          column: 1,
-          errorType: 'IndentationError',
-          pythonMessage: `IndentationError: unexpected indent on line ${lineNum}`,
-          explanation: 'This line is at the top level (not inside any block), so it must start at 0 spaces.',
-          concept: 'unexpected_indent'
-        });
-      } else if (actualSpaces % 4 !== 0) {
-        issues.push({
-          line: lineNum,
-          column: 1,
-          errorType: 'IndentationError',
-          pythonMessage: `IndentationError: misaligned indent (${actualSpaces} spaces) on line ${lineNum}`,
-          explanation: `Python uses 4 spaces per indent level. Adjust line ${lineNum} from ${actualSpaces} spaces to ${expectedSpaces} spaces.`,
-          concept: 'alignment'
-        });
-      } else if (actualSpaces > expectedSpaces) {
-        issues.push({
-          line: lineNum,
-          column: 1,
-          errorType: 'IndentationError',
-          pythonMessage: `IndentationError: unexpected indent on line ${lineNum} (found ${actualSpaces} spaces, expected ${expectedSpaces})`,
-          explanation: `This statement belongs outside the inner block. Dedent line ${lineNum} back to ${expectedSpaces} spaces.`,
-          concept: 'dedent_scope'
+          errorType: 'HTMLIndentError',
+          pythonMessage: isClosingTag
+            ? `HTMLIndentError: closing tag on line ${lineNum} does not align with its opening tag (found ${actualSpaces} spaces, expected ${expectedSpaces})`
+            : `HTMLIndentError: misaligned HTML tag on line ${lineNum} (found ${actualSpaces} spaces, expected ${expectedSpaces})`,
+          explanation: isClosingTag
+            ? `Align closing tag '${act.trimmed}' at ${expectedSpaces} spaces to match its opening tag.`
+            : `Indent line ${lineNum} to ${expectedSpaces} spaces to match its HTML nesting level.`,
+          concept: isClosingTag ? 'html_closing_tag' : expectedSpaces === 0 ? 'unexpected_indent' : 'html_nesting'
         });
       } else {
-        issues.push({
-          line: lineNum,
-          column: 1,
-          errorType: 'IndentationError',
-          pythonMessage: `IndentationError: unindent does not match block level on line ${lineNum} (found ${actualSpaces} spaces, expected ${expectedSpaces})`,
-          explanation: `Indent line ${lineNum} to ${expectedSpaces} spaces so it stays inside its block.`,
-          concept: expectedSpaces > 4 ? 'nesting' : 'block_indent'
-        });
+        const prevOpenedBlock = prevTrimmed.endsWith(':') && BLOCK_OPENERS.test(prevTrimmed);
+        const isBranch = BRANCH_KEYWORDS.test(act.trimmed);
+
+        if (prevOpenedBlock && actualSpaces <= prevActualIndent && expectedSpaces > prevExpectedIndent) {
+          const kw = extractKeyword(prevTrimmed);
+          issues.push({
+            line: lineNum,
+            column: 1,
+            errorType: 'IndentationError',
+            pythonMessage: `IndentationError: expected an indented block after '${kw}' statement on line ${prevActualLineNum}`,
+            explanation: `Because line ${prevActualLineNum} ends with a colon (:), line ${lineNum} must be indented ${expectedSpaces} spaces.`,
+            concept: expectedSpaces > 4 ? 'nesting' : 'block_indent'
+          });
+        } else if (isBranch) {
+          const kw = extractKeyword(act.trimmed);
+          issues.push({
+            line: lineNum,
+            column: 1,
+            errorType: 'IndentationError',
+            pythonMessage: `IndentationError: '${kw}' on line ${lineNum} does not align with its matching block header`,
+            explanation: `Align '${kw}' at ${expectedSpaces} spaces so it matches its opening statement.`,
+            concept: 'branch_alignment'
+          });
+        } else if (expectedSpaces === 0 && actualSpaces > 0 && prevExpectedIndent === 0) {
+          issues.push({
+            line: lineNum,
+            column: 1,
+            errorType: 'IndentationError',
+            pythonMessage: `IndentationError: unexpected indent on line ${lineNum}`,
+            explanation: 'This line is at the top level (not inside any block), so it must start at 0 spaces.',
+            concept: 'unexpected_indent'
+          });
+        } else if (actualSpaces % 4 !== 0) {
+          issues.push({
+            line: lineNum,
+            column: 1,
+            errorType: 'IndentationError',
+            pythonMessage: `IndentationError: misaligned indent (${actualSpaces} spaces) on line ${lineNum}`,
+            explanation: `Python uses 4 spaces per indent level. Adjust line ${lineNum} from ${actualSpaces} spaces to ${expectedSpaces} spaces.`,
+            concept: 'alignment'
+          });
+        } else if (actualSpaces > expectedSpaces) {
+          issues.push({
+            line: lineNum,
+            column: 1,
+            errorType: 'IndentationError',
+            pythonMessage: `IndentationError: unexpected indent on line ${lineNum} (found ${actualSpaces} spaces, expected ${expectedSpaces})`,
+            explanation: `This statement belongs outside the inner block. Dedent line ${lineNum} back to ${expectedSpaces} spaces.`,
+            concept: 'dedent_scope'
+          });
+        } else {
+          issues.push({
+            line: lineNum,
+            column: 1,
+            errorType: 'IndentationError',
+            pythonMessage: `IndentationError: unindent does not match block level on line ${lineNum} (found ${actualSpaces} spaces, expected ${expectedSpaces})`,
+            explanation: `Indent line ${lineNum} to ${expectedSpaces} spaces so it stays inside its block.`,
+            concept: expectedSpaces > 4 ? 'nesting' : 'block_indent'
+          });
+        }
       }
     }
 
