@@ -12,11 +12,6 @@ export class GameService {
     throw new Error('Not implemented: getCampaigns');
   }
 
-  /** @returns {Promise<Array>} Sector catalog metadata */
-  async getSectors() {
-    throw new Error('Not implemented: getSectors');
-  }
-
   /**
    * Starts a new speed-run session.
    * @param {{ callsign?: string, sector?: string|number }} options

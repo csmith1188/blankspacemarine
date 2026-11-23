@@ -258,17 +258,22 @@ export function validateSubmission(puzzle, submittedCode) {
 
     // C. Internal token spacing check
     if (act.trimmed !== exp.trimmed) {
+      let diffIdx = 0;
+      const minLen = Math.min(act.trimmed.length, exp.trimmed.length);
+      while (diffIdx < minLen && act.trimmed[diffIdx] === exp.trimmed[diffIdx]) {
+        diffIdx++;
+      }
       issues.push({
         line: lineNum,
-        column: getLeadingWhitespace(act.raw).length + 1,
-        errorType: isHtml ? 'HTMLFormatError' : 'SyntaxError',
+        column: getLeadingWhitespace(act.raw).length + diffIdx + 1,
+        errorType: isHtml ? 'HTMLFormatError' : 'WhitespaceError',
         pythonMessage: isHtml
           ? `HTMLFormatError: extra or missing spaces inside HTML tag on line ${lineNum}`
-          : `SyntaxError: invalid spacing inside statement on line ${lineNum}`,
+          : `WhitespaceError: invalid spacing between identifiers/operators on line ${lineNum} (col ${getLeadingWhitespace(act.raw).length + diffIdx + 1})`,
         explanation: isHtml
           ? 'Check spacing inside the HTML tag — keep a single space between tag names and attributes.'
-          : 'Check the spaces inside the code statement itself — keep single spaces between Python keywords and expressions.',
-        concept: 'alignment'
+          : 'PEP 8: Keep a single space around operators (=, ==, +=, >=, +) and after commas, with no extra spaces inside parentheses or before colons.',
+        concept: isHtml ? 'alignment' : 'operator_spacing'
       });
     }
 

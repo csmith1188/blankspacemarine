@@ -129,7 +129,7 @@ router.get('/profile/:formbarId', async (req, res, next) => {
             rank,
             runStats,
             uniquePuzzlesCleared: progressRows.filter((p) => p.clears > 0).length,
-            totalCatalogPuzzles: resolvePuzzlesForScopes(core, ['campaign:beginner', 'campaign:main']).length,
+            totalCatalogPuzzles: resolvePuzzlesForScopes(core, scopes.map((s) => s.key)).length,
             scopeStats,
             conceptMastery,
             recentRuns: formattedRuns,

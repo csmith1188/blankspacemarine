@@ -72,38 +72,22 @@ export class GameController {
       this.dom.startMarinePreview.innerHTML = buildMarineSvg();
     }
 
-    const [campaigns, sectors] = await Promise.all([
-      this.service.getCampaigns(),
-      this.service.getSectors()
-    ]);
-    this._populateDeployments(campaigns, sectors);
+    const campaigns = await this.service.getCampaigns();
+    this._populateDeployments(campaigns);
     await this._refreshLeaderboards();
   }
 
-  _populateDeployments(campaigns, sectors) {
+  _populateDeployments(campaigns) {
     const select = this.dom.selectSector;
     if (!select) return;
     select.innerHTML = '';
 
-    const campGroup = document.createElement('optgroup');
-    campGroup.label = 'CAMPAIGNS';
     for (const c of campaigns) {
       const opt = document.createElement('option');
       opt.value = `campaign:${c.id}`;
       opt.textContent = `${c.name} (${c.missionCount} Missions)`;
-      campGroup.appendChild(opt);
+      select.appendChild(opt);
     }
-    select.appendChild(campGroup);
-
-    const sectorGroup = document.createElement('optgroup');
-    sectorGroup.label = 'MAIN CAMPAIGN — INDIVIDUAL SECTORS';
-    for (const sector of sectors) {
-      const opt = document.createElement('option');
-      opt.value = `sector:${sector.id}`;
-      opt.textContent = `${sector.name} — ${sector.subtitle} (${sector.missionCount || 0} Missions)`;
-      sectorGroup.appendChild(opt);
-    }
-    select.appendChild(sectorGroup);
   }
 
   async startRun(options = {}) {

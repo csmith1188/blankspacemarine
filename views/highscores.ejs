@@ -31,7 +31,7 @@
       <!-- Scope & View Filters -->
       <section class="panel section-card">
         <div class="panel-header">
-          <span class="panel-tag">FILTER BY DEPLOYMENT</span>
+          <span class="panel-tag">FILTER BY CAMPAIGN</span>
           <div class="view-toggle">
             <a
               href="/highscores?scope=<%= encodeURIComponent(selectedScope) %>&view=best"
@@ -52,7 +52,7 @@
             href="/highscores?scope=all&view=<%= encodeURIComponent(viewMode) %>"
             class="filter-pill <%= selectedScope === 'all' ? 'active' : '' %>"
           >
-            All Deployments
+            All Campaigns
           </a>
           <% scopes.forEach(function(scope) { %>
             <a
@@ -115,7 +115,7 @@
           <span class="panel-tag">ORBITAL RANKINGS (TOP 50)</span>
         </div>
         <% if (entries.length === 0) { %>
-          <p class="term-muted">No completed runs recorded for this deployment yet. Deploy to claim #1!</p>
+          <p class="term-muted">No completed runs recorded for this campaign yet. Deploy to claim #1!</p>
         <% } else { %>
           <div class="table-wrap">
             <table class="data-table">
@@ -123,7 +123,7 @@
                 <tr>
                   <th>#</th>
                   <th>Marine</th>
-                  <th>Deployment</th>
+                  <th>Campaign</th>
                   <th>Rank</th>
                   <th>Score</th>
                   <th>Time</th>

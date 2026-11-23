@@ -114,7 +114,7 @@ function buildSubmissionHtml(studentName, metrics, scopeLabels) {
     return [
         `<p><strong>Blank Space Marine — ${escapeHtml(studentName)}</strong></p>`,
         '<ul>',
-        `<li><strong>Selected Campaigns/Sectors:</strong> ${escapeHtml(scopeLabels.join(', '))}</li>`,
+        `<li><strong>Selected Campaigns:</strong> ${escapeHtml(scopeLabels.join(', '))}</li>`,
         `<li><strong>Missions Cleared:</strong> ${metrics.clearedPuzzles} / ${metrics.totalPuzzles} (${metrics.completionPct}%)</li>`,
         `<li><strong>Accuracy:</strong> ${metrics.accuracyPct}%</li>`,
         `<li><strong>Calculated Score:</strong> ${metrics.grade} / ${metrics.maxScore}</li>`,
@@ -130,7 +130,7 @@ function buildPlainTextReport(className, studentName, metrics, scopeLabels, core
         `Blank Space Marine Progress Report — ${className}`,
         `Student: ${studentName}`,
         '',
-        `Selected Campaigns/Sectors: ${scopeLabels.join(', ')}`,
+        `Selected Campaigns: ${scopeLabels.join(', ')}`,
         `Calculated Score: ${metrics.grade} / ${metrics.maxScore}`,
         `Completion: ${metrics.clearedPuzzles} / ${metrics.totalPuzzles} missions (${metrics.completionPct}%)`,
         `Accuracy: ${metrics.accuracyPct}%`
@@ -182,11 +182,13 @@ router.get('/teacher/classes/:classId', requireLogin, requireTeacher, requireCla
 
         const core = await loadGameCore();
         const scopeCatalog = getScopeCatalog(core);
+        const validScopeKeys = new Set(scopeCatalog.map((s) => s.key));
         const settingsRow = getClassSchoologyStmt.get(req.classId);
-        const selectedScopes = parseSelectedScopes(
+        const parsedScopes = parseSelectedScopes(
             settingsRow && settingsRow.selected_scopes_json,
             ['campaign:main']
-        );
+        ).filter((key) => validScopeKeys.has(key));
+        const selectedScopes = parsedScopes.length > 0 ? parsedScopes : ['campaign:main'];
         const maxScore = settingsRow && settingsRow.max_score != null ? Number(settingsRow.max_score) : 100;
         const selectedPuzzles = resolvePuzzlesForScopes(core, selectedScopes);
 
@@ -237,58 +239,64 @@ router.get('/teacher/classes/:classId', requireLogin, requireTeacher, requireCla
     }
 });
 
-router.post('/api/teacher/classes/:classId/schoology/setup', requireLogin, requireTeacher, requireClassTeacher, (req, res) => {
-    const body = req.body || {};
-    const sectionId = String(body.sectionId || '').trim();
-    const assignmentId = String(body.assignmentId || '').trim();
-    const rawMax = body.maxScore;
-    let maxScore = 100;
+router.post('/api/teacher/classes/:classId/schoology/setup', requireLogin, requireTeacher, requireClassTeacher, async (req, res, next) => {
+    try {
+        const body = req.body || {};
+        const sectionId = String(body.sectionId || '').trim();
+        const assignmentId = String(body.assignmentId || '').trim();
+        const rawMax = body.maxScore;
+        let maxScore = 100;
 
-    if (rawMax !== '' && rawMax != null) {
-        const parsed = Number(rawMax);
-        if (!Number.isFinite(parsed) || parsed <= 0) {
-            return res.status(400).json({ error: 'Max score must be a positive number.' });
+        if (rawMax !== '' && rawMax != null) {
+            const parsed = Number(rawMax);
+            if (!Number.isFinite(parsed) || parsed <= 0) {
+                return res.status(400).json({ error: 'Max score must be a positive number.' });
+            }
+            maxScore = parsed;
         }
-        maxScore = parsed;
-    }
 
-    const selectedScopes = Array.isArray(body.selectedScopes)
-        ? body.selectedScopes.map(String).filter(Boolean)
-        : [];
-    if (selectedScopes.length === 0) {
-        return res.status(400).json({ error: 'Select at least one campaign or sector.' });
-    }
+        const core = await loadGameCore();
+        const validScopeKeys = new Set(getScopeCatalog(core).map((s) => s.key));
+        const selectedScopes = Array.isArray(body.selectedScopes)
+            ? body.selectedScopes.map(String).filter((key) => validScopeKeys.has(key))
+            : [];
+        if (selectedScopes.length === 0) {
+            return res.status(400).json({ error: 'Select at least one campaign.' });
+        }
 
-    const classStudentIds = new Set(
-        getClassStudentsStmt.all(req.classId).map((s) => Number(s.id))
-    );
-    const studentMappings = Array.isArray(body.studentMappings) ? body.studentMappings : [];
-
-    const tx = db.transaction(() => {
-        upsertClassSchoologyStmt.run(
-            req.classId,
-            sectionId || null,
-            assignmentId || null,
-            maxScore,
-            JSON.stringify(selectedScopes)
+        const classStudentIds = new Set(
+            getClassStudentsStmt.all(req.classId).map((s) => Number(s.id))
         );
+        const studentMappings = Array.isArray(body.studentMappings) ? body.studentMappings : [];
 
-        for (const item of studentMappings) {
-            const uid = Number(item && item.userId);
-            if (!classStudentIds.has(uid)) continue;
-            const sid = String((item && item.schoologyId) || '').trim();
-            updateStudentSchoologyIdStmt.run(sid || null, uid);
-        }
-    });
+        const tx = db.transaction(() => {
+            upsertClassSchoologyStmt.run(
+                req.classId,
+                sectionId || null,
+                assignmentId || null,
+                maxScore,
+                JSON.stringify(selectedScopes)
+            );
 
-    tx();
-    return res.json({
-        success: true,
-        sectionId,
-        assignmentId,
-        maxScore,
-        selectedScopes
-    });
+            for (const item of studentMappings) {
+                const uid = Number(item && item.userId);
+                if (!classStudentIds.has(uid)) continue;
+                const sid = String((item && item.schoologyId) || '').trim();
+                updateStudentSchoologyIdStmt.run(sid || null, uid);
+            }
+        });
+
+        tx();
+        return res.json({
+            success: true,
+            sectionId,
+            assignmentId,
+            maxScore,
+            selectedScopes
+        });
+    } catch (err) {
+        return next(err);
+    }
 });
 
 router.post('/api/teacher/classes/:classId/schoology/sync', requireLogin, requireTeacher, requireClassTeacher, async (req, res, next) => {
@@ -329,13 +337,16 @@ router.post('/api/teacher/classes/:classId/schoology/sync', requireLogin, requir
 
         const core = await loadGameCore();
         const scopeCatalog = getScopeCatalog(core);
-        const scopeLabels = selectedScopes.map((key) => {
+        const validScopeKeys = new Set(scopeCatalog.map((s) => s.key));
+        const filteredScopes = selectedScopes.filter((key) => validScopeKeys.has(key));
+        const activeScopes = filteredScopes.length > 0 ? filteredScopes : ['campaign:main'];
+        const scopeLabels = activeScopes.map((key) => {
             const found = scopeCatalog.find((s) => s.key === key);
             return found ? found.label : key;
         });
-        const selectedPuzzles = resolvePuzzlesForScopes(core, selectedScopes);
+        const selectedPuzzles = resolvePuzzlesForScopes(core, activeScopes);
         if (selectedPuzzles.length === 0) {
-            return res.status(400).json({ error: 'No puzzles found for the selected campaigns/sectors.' });
+            return res.status(400).json({ error: 'No puzzles found for the selected campaigns.' });
         }
 
         const students = getClassStudentsStmt.all(req.classId);

@@ -2,7 +2,6 @@ import { GameService } from './gameService.js';
 import {
   CAMPAIGNS,
   CONCEPT_METADATA,
-  SECTORS,
   getPuzzlesForSector
 } from '../../core/puzzles.js';
 import { validateSubmission, POWERUP_CHAR, BONUS_POINTS_CHAR } from '../../core/validator.js';
@@ -92,18 +91,11 @@ export class LocalAuthority extends GameService {
     }));
   }
 
-  async getSectors() {
-    return SECTORS.map((s) => ({
-      ...s,
-      missionCount: getPuzzlesForSector(s.id).length
-    }));
-  }
-
-  async startRun({ callsign = 'CADET-01', sector = 'all' } = {}) {
+  async startRun({ callsign = 'CADET-01', sector = 'campaign:beginner' } = {}) {
     const cleanCallsign = String(callsign || 'CADET-01').trim().slice(0, 18) || 'CADET-01';
     const queue = getPuzzlesForSector(sector);
     if (queue.length === 0) {
-      throw new Error(`No puzzles available for sector: ${sector}`);
+      throw new Error(`No puzzles available for campaign: ${sector}`);
     }
 
     const now = Date.now();

@@ -5,6 +5,7 @@
 
 import { BEGINNER_CONDITIONAL_PUZZLES } from './conditionalsCampaign.js';
 import { HTML_FORMATTING_PUZZLES } from './htmlCampaign.js';
+import { EXPERT_CAMPAIGN_PUZZLES } from './expertCampaign.js';
 
 export const CONCEPT_METADATA = {
   unexpected_indent: {
@@ -66,6 +67,11 @@ export const CONCEPT_METADATA = {
     id: 'html_closing_tag',
     label: 'HTML Closing Tag Alignment',
     description: 'Align every closing tag (</div>, </section>, </html>) directly beneath its matching opening tag.'
+  },
+  operator_spacing: {
+    id: 'operator_spacing',
+    label: 'PEP 8 Operator & Token Spacing',
+    description: 'Use a single space around operators (=, ==, +=, >=, +) and after commas, with no extra spaces inside parentheses or before colons.'
   }
 };
 
@@ -786,6 +792,12 @@ export const CAMPAIGNS = [
     puzzles: PUZZLES
   },
   {
+    id: 'expert',
+    name: 'Expert Campaign: Deep Orbit',
+    subtitle: 'Deep Nesting, Logic Comprehension & Operator Spacing',
+    puzzles: EXPERT_CAMPAIGN_PUZZLES
+  },
+  {
     id: 'html',
     name: 'HTML Campaign: Markup Formatter',
     subtitle: 'Clean 4-Space HTML Tag Nesting & Alignment',
@@ -797,15 +809,19 @@ export function getPuzzleById(puzzleId) {
   return (
     PUZZLES.find((p) => p.id === puzzleId) ||
     BEGINNER_CONDITIONAL_PUZZLES.find((p) => p.id === puzzleId) ||
+    EXPERT_CAMPAIGN_PUZZLES.find((p) => p.id === puzzleId) ||
     HTML_FORMATTING_PUZZLES.find((p) => p.id === puzzleId) ||
     null
   );
 }
 
 export function getPuzzlesForSector(sectorId) {
-  const key = String(sectorId || 'all');
+  const key = String(sectorId || 'campaign:main');
   if (key === 'campaign:beginner' || key === 'beginner') {
     return BEGINNER_CONDITIONAL_PUZZLES.slice();
+  }
+  if (key === 'campaign:expert' || key === 'expert') {
+    return EXPERT_CAMPAIGN_PUZZLES.slice();
   }
   if (key === 'campaign:html' || key === 'html') {
     return HTML_FORMATTING_PUZZLES.slice();
@@ -813,6 +829,5 @@ export function getPuzzlesForSector(sectorId) {
   if (key === 'campaign:main' || key === 'main' || key === 'all') {
     return PUZZLES.slice();
   }
-  const numericSector = Number(key.replace(/^sector:/, ''));
-  return PUZZLES.filter((p) => p.sector === numericSector);
+  return [];
 }

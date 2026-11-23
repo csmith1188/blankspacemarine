@@ -173,11 +173,7 @@ router.get('/catalog', async (req, res, next) => {
             subtitle: c.subtitle,
             missionCount: c.puzzles.length
         }));
-        const sectors = core.SECTORS.map((s) => ({
-            ...s,
-            missionCount: core.getPuzzlesForSector(`sector:${s.id}`).length
-        }));
-        res.json({ campaigns, sectors });
+        res.json({ campaigns });
     } catch (err) {
         next(err);
     }
@@ -198,7 +194,7 @@ router.post('/runs', requireLogin, async (req, res, next) => {
         const queue = core.getPuzzlesForSector(sector);
 
         if (!queue || queue.length === 0) {
-            return res.status(400).json({ error: `No puzzles available for sector: ${sector}` });
+            return res.status(400).json({ error: `No puzzles available for campaign: ${sector}` });
         }
 
         const now = Date.now();

@@ -16,7 +16,7 @@
           <span class="panel-tag">CLASS SCOREBOARD // FORMBAR #<%= classInfo.formbar_class_id %></span>
           <h1 class="page-heading"><%= classInfo.name %></h1>
           <p class="page-lead">
-            Configure campaigns/sectors to grade, edit student Schoology IDs, and either upload scores to a Schoology assignment or send progress reports via Schoology message.
+            Configure campaigns to grade, edit student Schoology IDs, and either upload scores to a Schoology assignment or send progress reports via Schoology message.
           </p>
         </div>
         <div class="action-row">
@@ -24,7 +24,7 @@
         </div>
       </section>
 
-      <!-- Schoology Configuration & Campaign/Sector Checklist -->
+      <!-- Schoology Configuration & Campaign Checklist -->
       <section class="panel section-card">
         <div class="panel-header">
           <span class="panel-tag">SCHOOLOGY GRADE UPLOAD &amp; MESSAGE REPORT SETUP</span>
@@ -53,7 +53,7 @@
         </div>
 
         <div class="checklist-section">
-          <span class="panel-tag">CAMPAIGNS &amp; SECTORS TO CALCULATE SCORE ON</span>
+          <span class="panel-tag">CAMPAIGNS TO CALCULATE SCORE ON</span>
           <div class="checklist-grid" id="scope-checklist">
             <% scopeCatalog.forEach(function(scope) { %>
               <label class="checklist-item">
@@ -104,7 +104,7 @@
                   <th>Accuracy</th>
                   <th>Best Run</th>
                   <% scopeCatalog.forEach(function(scope) { %>
-                    <th title="<%= scope.label %>"><%= scope.kind === 'campaign' ? scope.id.toUpperCase() : 'S' + scope.id %></th>
+                    <th title="<%= scope.label %>"><%= scope.id.toUpperCase() %></th>
                   <% }) %>
                 </tr>
               </thead>

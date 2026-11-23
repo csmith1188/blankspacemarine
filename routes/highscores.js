@@ -138,7 +138,7 @@ router.get('/highscores', async (req, res, next) => {
             selectedScope,
             selectedScopeLabel:
                 selectedScope === 'all'
-                    ? 'All Campaigns & Sectors'
+                    ? 'All Campaigns'
                     : scopeLabelByKey.get(selectedScope) || selectedScope,
             viewMode,
             summary: {

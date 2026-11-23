@@ -40,11 +40,6 @@ export class RemoteServerAuthority extends GameService {
     return catalog.campaigns || [];
   }
 
-  async getSectors() {
-    const catalog = await this._getCatalog();
-    return catalog.sectors || [];
-  }
-
   async startRun({ callsign, sector } = {}) {
     return this._fetchJson(`${this.basePath}/runs`, {
       method: 'POST',
