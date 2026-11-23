@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blank Space Marine — Python Whitespace Purge</title>
+  <link rel="stylesheet" href="/styles/theme.css" />
+</head>
+<body>
+  <!-- Full-viewport plasma laser & particle VFX overlay -->
+  <canvas id="fx-canvas" class="fx-canvas" aria-hidden="true"></canvas>
+
+  <div class="app-shell">
+    <%- include('partials/nav') %>
+
+    <!-- Start / Play Page View -->
+    <section id="modal-start" class="start-screen">
+      <div class="modal-card start-modal start-page-card">
+        <div class="modal-hero">
+          <div id="start-marine-preview" class="start-marine-preview" aria-hidden="true"></div>
+          <div>
+            <span class="panel-tag">PYTHON WHITESPACE SPEED-RUN</span>
+            <h2 class="modal-title">BLANK SPACE MARINE</h2>
+            <p class="modal-lead">
+              Alien tabs, drifted spaces, and broken indents have hijacked our orbital Python code.
+              Use keyboard controls to <strong>vaporize rogue whitespace</strong> and <strong>deploy clean 4-space indents</strong> as fast as you can!
+            </p>
+          </div>
+        </div>
+
+        <% if (!currentUser) { %>
+          <div class="guest-callout">
+            <span>Playing as <strong>Guest</strong> — your runs will not be saved to the leaderboard or class gradebook.</span>
+            <a href="/login" class="btn btn-primary btn-sm">Log in with Formbar</a>
+          </div>
+        <% } %>
+
+        <div class="setup-grid">
+          <div class="form-group">
+            <label for="input-callsign">MARINE CALLSIGN</label>
+            <input
+              id="input-callsign"
+              type="text"
+              maxlength="18"
+              value="<%= currentUser ? currentUser.username.slice(0, 18) : 'GUEST-01' %>"
+              autocomplete="off"
+            />
+          </div>
+          <div class="form-group">
+            <label for="select-sector">MISSION DEPLOYMENT</label>
+            <select id="select-sector">
+              <option value="campaign:beginner">Beginner Campaign — Conditional Command</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="start-actions">
+          <button id="btn-deploy" class="btn btn-primary btn-lg" type="button">
+            DEPLOY TO ORBIT
+          </button>
+        </div>
+
+        <div class="leaderboard-box">
+          <div class="panel-header">
+            <span class="panel-tag">ORBITAL COMMAND LEADERBOARD</span>
+          </div>
+          <div id="start-leaderboard" class="leaderboard-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Active Game Workspace (shown after deploying) -->
+    <div id="game-workspace" class="game-workspace hidden">
+    <!-- Top Orbital HUD -->
+    <header class="hud-bar">
+      <div class="hud-brand">
+        <div class="brand-emblem" aria-hidden="true">BSM</div>
+        <div>
+          <h1 class="brand-title">BLANK SPACE MARINE</h1>
+          <p class="brand-subtitle">ORBITAL PYTHON WHITESPACE PURGE COMMAND</p>
+        </div>
+      </div>
+
+      <div class="hud-metrics" aria-label="Mission telemetry">
+        <div class="metric-pill">
+          <span class="metric-label">MISSION</span>
+          <span id="hud-mission" class="metric-value">-- / --</span>
+        </div>
+        <div class="metric-pill">
+          <span class="metric-label">CLOCK</span>
+          <span id="hud-timer" class="metric-value mono">00:00.0</span>
+        </div>
+        <div class="metric-pill">
+          <span class="metric-label">SCORE</span>
+          <span id="hud-score" class="metric-value mono">0</span>
+        </div>
+        <div class="metric-pill">
+          <span class="metric-label">STREAK</span>
+          <span id="hud-streak" class="metric-value mono">x1.00</span>
+        </div>
+        <div class="metric-pill rank-pill">
+          <span class="metric-label">RANK</span>
+          <span id="hud-rank" class="metric-value">CDT</span>
+        </div>
+        <div class="metric-pill powerup-pill">
+          <span class="metric-label">POWER-UP</span>
+          <span id="hud-powerup" class="metric-value mono">OFF</span>
+        </div>
+        <button id="btn-pause" class="icon-btn pause-btn" type="button" title="Pause mission and shield code" aria-pressed="false">
+          PAUSE
+        </button>
+        <button id="btn-mute" class="icon-btn" type="button" title="Toggle Audio SFX" aria-pressed="false">
+          SFX: ON
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Tactical Workspace -->
+    <main class="tactical-grid">
+      <!-- Left Command Deck -->
+      <aside class="command-deck">
+        <section class="marine-card panel">
+          <div class="marine-header">
+            <span class="panel-tag">COMMANDER VEX // UNIT 04</span>
+            <span id="marine-status-badge" class="status-badge status-ready">READY</span>
+          </div>
+          <div class="marine-stage">
+            <div id="marine-avatar" class="marine-avatar state-idle" aria-hidden="true"></div>
+            <div class="marine-comms">
+              <p id="marine-dialogue" class="marine-dialogue">
+                "Rogue spaces and tabs detected in orbital Python code. Lock and load, Cadet!"
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="briefing-card panel">
+          <div class="panel-header">
+            <span id="mission-sector" class="panel-tag">SECTOR 1: BOOT CAMP</span>
+            <span id="mission-par" class="par-tag">PAR: 15.0s</span>
+          </div>
+          <h2 id="mission-title" class="mission-title">Awaiting Deployment...</h2>
+          <p id="mission-briefing" class="mission-briefing">
+            Select a sector and deploy to begin purging Python whitespace errors.
+          </p>
+          <div id="mission-concepts" class="concept-chips"></div>
+        </section>
+
+        <section class="controls-card panel">
+          <div class="panel-header">
+            <span class="panel-tag">WEAPON &amp; KEYBOARD CONTROLS</span>
+          </div>
+          <ul class="keybind-list">
+            <li><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> <span>Aim (+<kbd>Ctrl</kbd> word, +<kbd>Shift</kbd> select)</span></li>
+            <li><kbd>Home</kbd> / <kbd>End</kbd> <span>Line start / end (<kbd>PgUp</kbd>/<kbd>PgDn</kbd> top / bottom)</span></li>
+            <li><kbd>Tab</kbd> <span>+4 spaces at cursor (or indent selection)</span></li>
+            <li><kbd>Ctrl</kbd>+<kbd>]</kbd> / <kbd>Ctrl</kbd>+<kbd>[</kbd> <span>Indent / outdent whole line(s)</span></li>
+            <li><kbd>Shift</kbd>+<kbd>Tab</kbd> <span>Outdent whole line(s)</span></li>
+            <li><kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> <span>Add cursor (<kbd>Alt</kbd>+Click, <kbd>Esc</kbd>)</span></li>
+            <li><kbd>Ctrl</kbd>+<kbd>D</kbd> <span>Select next duplicate match</span></li>
+            <li><kbd>Alt</kbd>+<kbd>↑</kbd><kbd>↓</kbd> <span>Shift line(s) up / down</span></li>
+            <li><kbd>Enter</kbd> / <kbd>Shift</kbd>+<kbd>Enter</kbd> <span>Insert blank line</span></li>
+            <li><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> <span>Delete blank line(s)</span></li>
+            <li><kbd>Space</kbd> / <kbd>Bksp</kbd> / <kbd>Del</kbd> <span>Add / vaporize space</span></li>
+            <li><kbd>Ctrl</kbd>+<kbd>Enter</kbd> <span>Fire &amp; test Python</span></li>
+            <li><kbd>F1</kbd> / <kbd>Ctrl</kbd>+<kbd>Z</kbd><kbd>Y</kbd> <span>Hint / Undo &amp; Redo</span></li>
+          </ul>
+        </section>
+      </aside>
+
+      <!-- Right Code Purge Bay -->
+      <section class="purge-bay">
+        <div class="editor-panel panel">
+          <div class="editor-toolbar">
+            <div class="editor-file-info">
+              <span class="file-dot"></span>
+              <span class="file-name">mission_script.py</span>
+              <span id="cursor-telemetry" class="cursor-telemetry mono">LN 1 | COL 1 | INDENT 0</span>
+            </div>
+            <div class="editor-actions">
+              <button id="btn-hint" class="btn btn-secondary" type="button" title="Request Tactical Scanner Hint (F1)">
+                SCANNER [F1]
+              </button>
+              <button id="btn-reset" class="btn btn-ghost" type="button" title="Reset puzzle to initial broken state">
+                RESET
+              </button>
+              <button id="btn-submit" class="btn btn-primary" type="button" title="Validate Python whitespace (Ctrl+Enter)">
+                PURGE &amp; TEST [Ctrl+Enter]
+              </button>
+            </div>
+          </div>
+
+          <!-- Legend for visible whitespace glyphs -->
+          <div class="glyph-legend">
+            <span><code class="legend-chip legend-space">·</code> Space</span>
+            <span><code class="legend-chip legend-tab">→</code> Tab</span>
+            <span><code class="legend-chip legend-powerup">✦</code> Vision Power-Up</span>
+            <span><code class="legend-chip legend-bonus">◆</code> Bonus (+250 pts)</span>
+            <span><code class="legend-chip legend-lf">↵ LF</code> New Line (\n)</span>
+            <span><code class="legend-chip legend-crlf">␍↵ CRLF</code> Carriage Return + LF (\r\n)</span>
+            <span class="legend-note">Rails = 4-space PEP 8 stops</span>
+          </div>
+
+          <!-- Keyboard-first locked whitespace editor mounts here -->
+          <div class="editor-stage">
+            <div id="code-editor" class="whitespace-editor"></div>
+            <div id="pause-overlay" class="pause-overlay hidden" role="dialog" aria-label="Mission paused">
+              <div class="pause-shield-card">
+                <span class="panel-tag">ORBITAL STASIS ENGAGED</span>
+                <h3 class="pause-title">MISSION PAUSED</h3>
+                <p class="pause-desc">Code display is shielded and cursor movement is disabled until you resume.</p>
+                <button id="btn-resume" class="btn btn-primary btn-lg" type="button">
+                  RESUME MISSION
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Transient banner for mission clear / score pop -->
+          <div id="clear-banner" class="clear-banner hidden" role="status" aria-live="polite"></div>
+        </div>
+
+        <!-- Python Diagnostic Terminal -->
+        <div class="terminal-panel panel">
+          <div class="panel-header">
+            <span class="panel-tag">PYTHON DIAGNOSTIC TERMINAL</span>
+            <span id="terminal-status" class="terminal-status">STANDBY</span>
+          </div>
+          <div id="terminal-output" class="terminal-output" aria-live="polite">
+            <p class="term-muted">Ready for whitespace purge. Press <strong>Ctrl+Enter</strong> to run Python diagnostics.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+    </div>
+  </div>
+
+  <!-- End-of-Run Debrief Modal -->
+  <div id="modal-debrief" class="modal-backdrop hidden">
+    <div class="modal-card debrief-modal">
+      <div class="panel-header">
+        <span class="panel-tag">ORBITAL PURGE COMPLETE</span>
+        <span id="debrief-rank-badge" class="status-badge status-clear">CADET</span>
+      </div>
+      <h2 class="modal-title">MISSION DEBRIEF</h2>
+
+      <% if (!currentUser) { %>
+        <div class="guest-callout">
+          <span>Guest run complete — log in with Formbar to record scores on your profile and leaderboard.</span>
+          <a href="/login" class="btn btn-primary btn-sm">Log in with Formbar</a>
+        </div>
+      <% } %>
+
+      <div class="debrief-stats">
+        <div class="stat-box">
+          <span class="stat-label">FINAL SCORE</span>
+          <span id="debrief-score" class="stat-value mono">0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">TOTAL TIME</span>
+          <span id="debrief-time" class="stat-value mono">00:00.0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">MISSIONS CLEARED</span>
+          <span id="debrief-cleared" class="stat-value mono">0 / 0</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">BEST STREAK</span>
+          <span id="debrief-streak" class="stat-value mono">0</span>
+        </div>
+      </div>
+
+      <div class="mastery-section">
+        <h3 class="section-heading">PYTHON WHITESPACE MASTERY REPORT</h3>
+        <div id="debrief-mastery" class="mastery-grid"></div>
+      </div>
+
+      <div class="leaderboard-box">
+        <div class="panel-header">
+          <span class="panel-tag">TOP RUNS</span>
+        </div>
+        <div id="debrief-leaderboard" class="leaderboard-list"></div>
+      </div>
+
+      <div class="debrief-actions">
+        <button id="btn-play-again" class="btn btn-primary btn-lg" type="button">DEPLOY AGAIN</button>
+        <button id="btn-change-sector" class="btn btn-secondary btn-lg" type="button">CHANGE SECTOR</button>
+        <% if (currentUser) { %>
+          <a href="/profile/<%= encodeURIComponent(currentUser.formbarId) %>" class="btn btn-ghost btn-lg">VIEW MY PROFILE</a>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    window.__BSM_USER__ = <%- JSON.stringify(currentUser ? {
+      id: currentUser.id,
+      formbarId: currentUser.formbarId,
+      username: currentUser.username,
+      isTeacher: currentUser.isTeacher
+    } : null) %>;
+  </script>
+  <script type="module" src="/client/main.js"></script>
+</body>
+</html>

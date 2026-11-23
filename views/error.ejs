@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title || 'Error' %> — Blank Space Marine</title>
+  <link rel="stylesheet" href="/styles/theme.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <%- include('partials/nav') %>
+    <main class="page-container">
+      <section class="panel error-card">
+        <span class="panel-tag">SYSTEM ALERT</span>
+        <h1 class="page-heading"><%= title || 'Something went wrong' %></h1>
+        <p class="page-lead"><%= message || 'An unexpected error occurred.' %></p>
+        <div class="action-row">
+          <a href="/" class="btn btn-primary">Return to Command Deck</a>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

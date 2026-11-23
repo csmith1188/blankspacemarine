@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= profileUser.username %> — Marine Profile</title>
+  <link rel="stylesheet" href="/styles/theme.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <%- include('partials/nav') %>
+
+    <main class="page-container">
+      <section class="panel profile-hero">
+        <div class="profile-hero-main">
+          <div class="brand-emblem profile-emblem"><%= rank.badge %></div>
+          <div>
+            <span class="panel-tag">FORMBAR MARINE DOSSIER</span>
+            <h1 class="page-heading"><%= profileUser.username %></h1>
+            <p class="profile-meta mono">
+              Formbar ID: #<%= profileUser.formbar_id %> &middot; Rank: <strong><%= rank.title %></strong>
+            </p>
+          </div>
+        </div>
+        <div class="profile-hero-actions">
+          <a href="/" class="btn btn-primary">Deploy to Game</a>
+        </div>
+      </section>
+
+      <% if (isOwnProfile) { %>
+        <section class="panel schoology-link-card">
+          <div class="panel-header">
+            <span class="panel-tag">SCHOOLOGY ACCOUNT LINK</span>
+            <% if (profileUser.schoology_id) { %>
+              <span class="status-badge status-clear">LINKED</span>
+            <% } else { %>
+              <span class="status-badge status-alert">NOT LINKED</span>
+            <% } %>
+          </div>
+
+          <% if (schoologyLinked) { %>
+            <div class="alert-banner alert-success">Schoology account linked successfully.</div>
+          <% } %>
+          <% if (schoologyUnlinked) { %>
+            <div class="alert-banner alert-info">Schoology account unlinked.</div>
+          <% } %>
+          <% if (schoologyError) { %>
+            <div class="alert-banner alert-error"><%= schoologyError %></div>
+          <% } %>
+
+          <div class="schoology-link-body">
+            <% if (profileUser.schoology_id) { %>
+              <p class="profile-meta">
+                Linked to Schoology ID <strong class="mono"><%= profileUser.schoology_id %></strong>
+                <% if (profileUser.schoology_name) { %>
+                  (<%= profileUser.schoology_name %>)
+                <% } %>
+              </p>
+              <div class="action-row">
+                <a href="/auth/schoology" class="btn btn-secondary btn-sm">Re-link with Schoology</a>
+                <form method="POST" action="/profile/schoology/unlink" style="display:inline;">
+                  <button type="submit" class="btn btn-ghost btn-sm">Unlink</button>
+                </form>
+              </div>
+            <% } else { %>
+              <p class="profile-meta">
+                Link your Schoology account so your teacher can upload your Blank Space Marine grades and send progress reports directly to Schoology.
+              </p>
+              <div class="action-row">
+                <a href="/auth/schoology" class="btn btn-primary">Log in with Schoology to Link Account</a>
+              </div>
+            <% } %>
+          </div>
+        </section>
+      <% } %>
+
+      <section class="stats-grid">
+        <div class="stat-box panel">
+          <span class="stat-label">BEST RUN SCORE</span>
+          <span class="stat-value mono"><%= Number(runStats.best_run_score || 0).toLocaleString() %></span>
+        </div>
+        <div class="stat-box panel">
+          <span class="stat-label">MISSIONS MASTERED</span>
+          <span class="stat-value mono"><%= uniquePuzzlesCleared %> / <%= totalCatalogPuzzles %></span>
+        </div>
+        <div class="stat-box panel">
+          <span class="stat-label">COMPLETED RUNS</span>
+          <span class="stat-value mono"><%= runStats.total_runs || 0 %></span>
+        </div>
+        <div class="stat-box panel">
+          <span class="stat-label">BEST STREAK</span>
+          <span class="stat-value mono"><%= runStats.best_streak || 0 %></span>
+        </div>
+      </section>
+
+      <section class="panel section-card">
+        <div class="panel-header">
+          <span class="panel-tag">CAMPAIGN &amp; SECTOR PROGRESS</span>
+        </div>
+        <div class="scope-grid">
+          <% scopeStats.forEach(function(scope) { %>
+            <div class="scope-card">
+              <div class="scope-card-top">
+                <strong><%= scope.label %></strong>
+                <span class="status-badge <%= scope.completionPct === 100 ? 'status-clear' : 'status-ready' %>">
+                  <%= scope.completionPct %>%
+                </span>
+              </div>
+              <p class="scope-subtitle"><%= scope.subtitle %></p>
+              <div class="scope-metrics mono">
+                <span>Cleared: <%= scope.clearedPuzzles %>/<%= scope.totalPuzzles %></span>
+                <span>Accuracy: <%= scope.accuracyPct %>%</span>
+                <span>Best Run: <%= scope.bestRunScore.toLocaleString() %> pts</span>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      </section>
+
+      <% if (conceptMastery.length > 0) { %>
+        <section class="panel section-card">
+          <div class="panel-header">
+            <span class="panel-tag">PYTHON WHITESPACE CONCEPT MASTERY</span>
+          </div>
+          <div class="mastery-grid">
+            <% conceptMastery.forEach(function(item) { %>
+              <div class="mastery-card">
+                <div class="mastery-top">
+                  <span class="mastery-label"><%= item.label %></span>
+                  <span class="status-badge <%= item.status === 'MASTERED' ? 'badge-mastered' : item.status === 'PROFICIENT' ? 'badge-proficient' : 'badge-drill' %>">
+                    <%= item.status %> (<%= item.accuracy %>%)
+                  </span>
+                </div>
+                <p class="mastery-desc"><%= item.description %></p>
+              </div>
+            <% }) %>
+          </div>
+        </section>
+      <% } %>
+
+      <section class="panel section-card">
+        <div class="panel-header">
+          <span class="panel-tag">RECENT COMPLETED RUNS</span>
+        </div>
+        <% if (recentRuns.length === 0) { %>
+          <p class="term-muted">No completed runs recorded yet.</p>
+        <% } else { %>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Deployment</th>
+                  <th>Rank</th>
+                  <th>Score</th>
+                  <th>Time</th>
+                  <th>Cleared</th>
+                  <th>Mistakes</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% recentRuns.forEach(function(r) { %>
+                  <tr>
+                    <td><%= r.scopeLabel %></td>
+                    <td><%= r.rank_title %></td>
+                    <td class="mono"><%= Number(r.total_score).toLocaleString() %></td>
+                    <td class="mono"><%= r.durationText %></td>
+                    <td class="mono"><%= r.puzzles_cleared %>/<%= r.total_puzzles %></td>
+                    <td class="mono"><%= r.total_mistakes %></td>
+                    <td class="mono"><%= r.completed_at %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

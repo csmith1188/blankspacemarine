@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>High Scores — Blank Space Marine</title>
+  <link rel="stylesheet" href="/styles/theme.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <%- include('partials/nav') %>
+
+    <main class="page-container">
+      <section class="panel profile-hero">
+        <div class="profile-hero-main">
+          <div class="brand-emblem profile-emblem">TOP</div>
+          <div>
+            <span class="panel-tag">ORBITAL HALL OF FAME</span>
+            <h1 class="page-heading">HIGH SCORES</h1>
+            <p class="profile-meta">
+              Showing <strong><%= selectedScopeLabel %></strong> &middot;
+              <%= viewMode === 'best' ? 'Best run per Marine' : 'All individual runs' %>
+            </p>
+          </div>
+        </div>
+        <div class="profile-hero-actions">
+          <a href="/" class="btn btn-primary">Deploy to Game</a>
+        </div>
+      </section>
+
+      <!-- Scope & View Filters -->
+      <section class="panel section-card">
+        <div class="panel-header">
+          <span class="panel-tag">FILTER BY DEPLOYMENT</span>
+          <div class="view-toggle">
+            <a
+              href="/highscores?scope=<%= encodeURIComponent(selectedScope) %>&view=best"
+              class="filter-pill <%= viewMode === 'best' ? 'active' : '' %>"
+            >
+              Best Per Marine
+            </a>
+            <a
+              href="/highscores?scope=<%= encodeURIComponent(selectedScope) %>&view=runs"
+              class="filter-pill <%= viewMode === 'runs' ? 'active' : '' %>"
+            >
+              All Runs
+            </a>
+          </div>
+        </div>
+        <div class="filter-bar">
+          <a
+            href="/highscores?scope=all&view=<%= encodeURIComponent(viewMode) %>"
+            class="filter-pill <%= selectedScope === 'all' ? 'active' : '' %>"
+          >
+            All Deployments
+          </a>
+          <% scopes.forEach(function(scope) { %>
+            <a
+              href="/highscores?scope=<%= encodeURIComponent(scope.key) %>&view=<%= encodeURIComponent(viewMode) %>"
+              class="filter-pill <%= selectedScope === scope.key ? 'active' : '' %>"
+            >
+              <%= scope.label %>
+            </a>
+          <% }) %>
+        </div>
+      </section>
+
+      <!-- Global Telemetry Summary -->
+      <section class="stats-grid">
+        <div class="stat-box panel">
+          <span class="stat-label">HIGHEST SCORE</span>
+          <span class="stat-value mono"><%= summary.topScore.toLocaleString() %></span>
+        </div>
+        <div class="stat-box panel">
+          <span class="stat-label">FASTEST CLEAR</span>
+          <span class="stat-value mono"><%= summary.fastestText %></span>
+        </div>
+        <div class="stat-box panel">
+          <span class="stat-label">RANKED MARINES</span>
+          <span class="stat-value mono"><%= summary.uniquePlayers %></span>
+        </div>
+        <div class="stat-box panel">
+          <span class="stat-label">COMPLETED RUNS</span>
+          <span class="stat-value mono"><%= summary.totalRuns %></span>
+        </div>
+      </section>
+
+      <!-- Top 3 Podium -->
+      <% if (podium.length > 0) { %>
+        <section class="podium-grid" aria-label="Top 3 Marines">
+          <% podium.forEach(function(entry) { %>
+            <article class="panel podium-card podium-rank-<%= entry.position %> <%= entry.isCurrentUser ? 'is-self-card' : '' %>">
+              <div class="podium-top">
+                <span class="podium-medal mono">#<%= entry.position %></span>
+                <span class="status-badge status-clear"><%= entry.rankTitle %></span>
+              </div>
+              <h2 class="podium-name">
+                <a href="/profile/<%= encodeURIComponent(entry.formbarId) %>"><%= entry.callsign %></a>
+              </h2>
+              <p class="podium-sub mono"><%= entry.username %> &middot; <%= entry.scopeLabel %></p>
+              <div class="podium-score mono"><%= entry.score.toLocaleString() %> <span>pts</span></div>
+              <div class="podium-meta mono">
+                <span>Time: <%= entry.durationText %></span>
+                <span>Streak: <%= entry.bestStreak %></span>
+                <span>Mistakes: <%= entry.mistakes %></span>
+              </div>
+            </article>
+          <% }) %>
+        </section>
+      <% } %>
+
+      <!-- Full Rankings Table -->
+      <section class="panel section-card">
+        <div class="panel-header">
+          <span class="panel-tag">ORBITAL RANKINGS (TOP 50)</span>
+        </div>
+        <% if (entries.length === 0) { %>
+          <p class="term-muted">No completed runs recorded for this deployment yet. Deploy to claim #1!</p>
+        <% } else { %>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Marine</th>
+                  <th>Deployment</th>
+                  <th>Rank</th>
+                  <th>Score</th>
+                  <th>Time</th>
+                  <th>Cleared</th>
+                  <th>Streak</th>
+                  <th>Mistakes</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% entries.forEach(function(entry) { %>
+                  <tr class="<%= entry.isCurrentUser ? 'is-self-row' : '' %>">
+                    <td class="mono"><strong>#<%= entry.position %></strong></td>
+                    <td>
+                      <a href="/profile/<%= encodeURIComponent(entry.formbarId) %>" class="table-link">
+                        <strong><%= entry.callsign %></strong>
+                      </a>
+                      <% if (entry.callsign !== entry.username) { %>
+                        <span class="term-muted"> (<%= entry.username %>)</span>
+                      <% } %>
+                    </td>
+                    <td><%= entry.scopeLabel %></td>
+                    <td><%= entry.rankTitle %></td>
+                    <td class="mono"><strong><%= entry.score.toLocaleString() %></strong></td>
+                    <td class="mono"><%= entry.durationText %></td>
+                    <td class="mono"><%= entry.puzzlesCleared %>/<%= entry.totalPuzzles %></td>
+                    <td class="mono"><%= entry.bestStreak %></td>
+                    <td class="mono"><%= entry.mistakes %></td>
+                    <td class="mono"><%= entry.completedAt %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= classInfo.name %> — Teacher Panel</title>
+  <link rel="stylesheet" href="/styles/theme.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <%- include('partials/nav') %>
+
+    <main class="page-container">
+      <section class="panel page-hero">
+        <div>
+          <span class="panel-tag">CLASS SCOREBOARD // FORMBAR #<%= classInfo.formbar_class_id %></span>
+          <h1 class="page-heading"><%= classInfo.name %></h1>
+          <p class="page-lead">
+            Configure campaigns/sectors to grade, edit student Schoology IDs, and either upload scores to a Schoology assignment or send progress reports via Schoology message.
+          </p>
+        </div>
+        <div class="action-row">
+          <a href="/teacher" class="btn btn-ghost">All Classes</a>
+        </div>
+      </section>
+
+      <!-- Schoology Configuration & Campaign/Sector Checklist -->
+      <section class="panel section-card">
+        <div class="panel-header">
+          <span class="panel-tag">SCHOOLOGY GRADE UPLOAD &amp; MESSAGE REPORT SETUP</span>
+          <span id="sync-mode-badge" class="status-badge status-ready">MODE</span>
+        </div>
+
+        <% if (!schoologyConfigured) { %>
+          <div class="alert-banner alert-error">
+            Schoology API keys (<code>SCHOOLOGY_KEY</code> / <code>SCHOOLOGY_SECRET</code>) are not configured in <code>.env</code>. You can still save settings and student IDs, but Schoology API uploads/messages require keys.
+          </div>
+        <% } %>
+
+        <div class="teacher-config-grid">
+          <div class="form-group">
+            <label for="input-section-id">SCHOOLOGY COURSE / SECTION ID</label>
+            <input id="input-section-id" type="text" placeholder="e.g. 7482910345" value="<%= schoologySettings.sectionId %>" />
+          </div>
+          <div class="form-group">
+            <label for="input-assignment-id">SCHOOLOGY ASSIGNMENT ID (OPTIONAL)</label>
+            <input id="input-assignment-id" type="text" placeholder="Leave blank to send Schoology message report" value="<%= schoologySettings.assignmentId %>" />
+          </div>
+          <div class="form-group">
+            <label for="input-max-score">MAX SCORE VALUE</label>
+            <input id="input-max-score" type="number" min="1" step="0.5" value="<%= schoologySettings.maxScore %>" />
+          </div>
+        </div>
+
+        <div class="checklist-section">
+          <span class="panel-tag">CAMPAIGNS &amp; SECTORS TO CALCULATE SCORE ON</span>
+          <div class="checklist-grid" id="scope-checklist">
+            <% scopeCatalog.forEach(function(scope) { %>
+              <label class="checklist-item">
+                <input
+                  type="checkbox"
+                  name="scope"
+                  value="<%= scope.key %>"
+                  <%= schoologySettings.selectedScopes.includes(scope.key) ? 'checked' : '' %>
+                />
+                <span>
+                  <strong><%= scope.label %></strong>
+                  <small class="mono">(<%= scope.puzzleIds.length %> missions)</small>
+                </span>
+              </label>
+            <% }) %>
+          </div>
+          <p id="selected-puzzle-count" class="scope-subtitle mono"></p>
+        </div>
+
+        <div class="action-row teacher-actions">
+          <button id="btn-save-setup" class="btn btn-secondary" type="button">Save Setup &amp; Student Schoology IDs</button>
+          <button id="btn-schoology-sync" class="btn btn-primary" type="button">Upload Scores to Schoology</button>
+        </div>
+
+        <div id="sync-status-box" class="sync-status-box hidden"></div>
+      </section>
+
+      <!-- Student Roster & Scores Table -->
+      <section class="panel section-card">
+        <div class="panel-header">
+          <span class="panel-tag">STUDENT SCORES (<%= students.length %>)</span>
+        </div>
+
+        <% if (students.length === 0) { %>
+          <p class="term-muted">
+            No students have joined this class in Blank Space Marine yet. Once students log in with Formbar, they will appear here automatically.
+          </p>
+        <% } else { %>
+          <div class="table-wrap">
+            <table class="data-table teacher-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>Formbar ID</th>
+                  <th>Schoology ID (Editable)</th>
+                  <th>Calculated Score</th>
+                  <th>Completion</th>
+                  <th>Accuracy</th>
+                  <th>Best Run</th>
+                  <% scopeCatalog.forEach(function(scope) { %>
+                    <th title="<%= scope.label %>"><%= scope.kind === 'campaign' ? scope.id.toUpperCase() : 'S' + scope.id %></th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody id="student-rows-body">
+                <% students.forEach(function(st) { %>
+                  <tr data-user-id="<%= st.id %>">
+                    <td>
+                      <a href="/profile/<%= encodeURIComponent(st.formbar_id) %>" class="lb-profile-link">
+                        <strong><%= st.username %></strong>
+                      </a>
+                    </td>
+                    <td class="mono">#<%= st.formbar_id %></td>
+                    <td>
+                      <input
+                        type="text"
+                        class="table-input schoology-id-input mono"
+                        data-user-id="<%= st.id %>"
+                        value="<%= st.schoology_id || '' %>"
+                        placeholder="Enter Schoology UID"
+                        title="<%= st.schoology_name ? 'Linked: ' + st.schoology_name : 'Write or overwrite Schoology ID' %>"
+                      />
+                    </td>
+                    <td class="mono calc-grade-cell">
+                      <strong><%= st.selectedMetrics.grade %> / <%= schoologySettings.maxScore %></strong>
+                    </td>
+                    <td class="mono calc-comp-cell">
+                      <%= st.selectedMetrics.clearedPuzzles %>/<%= st.selectedMetrics.totalPuzzles %> (<%= st.selectedMetrics.completionPct %>%)
+                    </td>
+                    <td class="mono calc-acc-cell"><%= st.selectedMetrics.accuracyPct %>%</td>
+                    <td class="mono"><%= Number(st.best_run_score || 0).toLocaleString() %></td>
+                    <% scopeCatalog.forEach(function(scope) {
+                         const m = st.scopeBreakdown[scope.key]; %>
+                      <td class="mono" title="<%= m.clearedPuzzles %>/<%= m.totalPuzzles %> cleared, <%= m.accuracyPct %>% accuracy">
+                        <%= m.completionPct %>%
+                      </td>
+                    <% }) %>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      const classId = <%- JSON.stringify(classInfo.id) %>;
+      const scopeCatalog = <%- JSON.stringify(scopeCatalog) %>;
+      const studentsData = <%- JSON.stringify(students.map(function(s) {
+        return { id: s.id, progress: s.progressCompact };
+      })) %>;
+
+      const sectionInput = document.getElementById('input-section-id');
+      const assignmentInput = document.getElementById('input-assignment-id');
+      const maxScoreInput = document.getElementById('input-max-score');
+      const syncBtn = document.getElementById('btn-schoology-sync');
+      const saveBtn = document.getElementById('btn-save-setup');
+      const modeBadge = document.getElementById('sync-mode-badge');
+      const countEl = document.getElementById('selected-puzzle-count');
+      const statusBox = document.getElementById('sync-status-box');
+
+      function getSelectedScopes() {
+        return Array.from(document.querySelectorAll('#scope-checklist input[type="checkbox"]:checked'))
+          .map((cb) => cb.value);
+      }
+
+      function getUniquePuzzleIds(scopeKeys) {
+        const set = new Set();
+        scopeKeys.forEach((key) => {
+          const scope = scopeCatalog.find((s) => s.key === key);
+          if (scope) scope.puzzleIds.forEach((pid) => set.add(pid));
+        });
+        return Array.from(set);
+      }
+
+      function recalcPreview() {
+        const selectedScopes = getSelectedScopes();
+        const puzzleIds = getUniquePuzzleIds(selectedScopes);
+        const maxScore = Math.max(1, Number(maxScoreInput.value) || 100);
+        const hasAssignment = assignmentInput.value.trim().length > 0;
+
+        countEl.textContent = `Selected unique missions: ${puzzleIds.length}`;
+        if (hasAssignment) {
+          modeBadge.textContent = 'ASSIGNMENT GRADE UPLOAD';
+          modeBadge.className = 'status-badge status-clear';
+          syncBtn.textContent = 'Upload Scores to Schoology Assignment';
+        } else {
+          modeBadge.textContent = 'SCHOOLOGY MESSAGE REPORT';
+          modeBadge.className = 'status-badge status-ready';
+          syncBtn.textContent = 'Send Progress Reports via Schoology Message';
+        }
+
+        studentsData.forEach((st) => {
+          const row = document.querySelector(`tr[data-user-id="${st.id}"]`);
+          if (!row) return;
+          let cleared = 0;
+          let accSum = 0;
+          puzzleIds.forEach((pid) => {
+            const p = st.progress[pid];
+            if (p && p.clears > 0) {
+              cleared += 1;
+              accSum += Math.max(0, Math.min(1, Number(p.bestAccuracy) || 0));
+            }
+          });
+          const comp = puzzleIds.length > 0 ? cleared / puzzleIds.length : 0;
+          const acc = cleared > 0 ? accSum / cleared : 0;
+          const grade = Math.round(comp * acc * maxScore * 100) / 100;
+
+          row.querySelector('.calc-grade-cell').innerHTML = `<strong>${grade} / ${maxScore}</strong>`;
+          row.querySelector('.calc-comp-cell').textContent = `${cleared}/${puzzleIds.length} (${Math.round(comp * 100)}%)`;
+          row.querySelector('.calc-acc-cell').textContent = `${Math.round(acc * 100)}%`;
+        });
+      }
+
+      function collectPayload() {
+        const studentMappings = Array.from(document.querySelectorAll('.schoology-id-input')).map((inp) => ({
+          userId: Number(inp.dataset.userId),
+          schoologyId: inp.value.trim()
+        }));
+        return {
+          sectionId: sectionInput.value.trim(),
+          assignmentId: assignmentInput.value.trim(),
+          maxScore: Number(maxScoreInput.value) || 100,
+          selectedScopes: getSelectedScopes(),
+          studentMappings
+        };
+      }
+
+      function showStatus(html, type) {
+        statusBox.className = `sync-status-box alert-banner alert-${type}`;
+        statusBox.innerHTML = html;
+        statusBox.classList.remove('hidden');
+      }
+
+      async function saveSetup() {
+        const payload = collectPayload();
+        saveBtn.disabled = true;
+        try {
+          const res = await fetch(`/api/teacher/classes/${classId}/schoology/setup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to save setup.');
+          showStatus('Saved Schoology setup, checklist, and student Schoology IDs.', 'success');
+          return true;
+        } catch (err) {
+          showStatus(`Save failed: ${err.message}`, 'error');
+          return false;
+        } finally {
+          saveBtn.disabled = false;
+        }
+      }
+
+      async function runSchoologySync() {
+        const saved = await saveSetup();
+        if (!saved) return;
+
+        const payload = collectPayload();
+        const isUpload = payload.assignmentId.length > 0;
+        const confirmText = isUpload
+          ? `Upload calculated scores (max ${payload.maxScore}) to Schoology assignment ${payload.assignmentId} in course ${payload.sectionId}?`
+          : 'No Assignment ID provided. Send a progress report by Schoology private message to each student with a Schoology ID?';
+
+        if (!window.confirm(confirmText)) return;
+
+        syncBtn.disabled = true;
+        showStatus(isUpload ? 'Uploading scores to Schoology...' : 'Sending Schoology report messages...', 'info');
+
+        try {
+          const res = await fetch(`/api/teacher/classes/${classId}/schoology/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Schoology request failed.');
+
+          const label = data.mode === 'upload' ? 'Uploaded' : 'Sent';
+          const items = (data.results || [])
+            .map((r) => `<li><strong>${r.username}</strong>: ${r.status}${r.grade != null ? ` (${r.grade}/${r.maxScore})` : ''}${r.reason ? ` — ${r.reason}` : r.note ? ` — ${r.note}` : ''}</li>`)
+            .join('');
+
+          showStatus(
+            `<div><strong>${label}:</strong> ${data.processed} &middot; <strong>Skipped:</strong> ${data.skipped} &middot; <strong>Failed:</strong> ${data.failed}</div><ul class="sync-result-list">${items}</ul>`,
+            data.failed > 0 ? 'error' : 'success'
+          );
+        } catch (err) {
+          showStatus(`Schoology sync error: ${err.message}`, 'error');
+        } finally {
+          syncBtn.disabled = false;
+        }
+      }
+
+      document.getElementById('scope-checklist').addEventListener('change', recalcPreview);
+      assignmentInput.addEventListener('input', recalcPreview);
+      maxScoreInput.addEventListener('input', recalcPreview);
+      saveBtn.addEventListener('click', saveSetup);
+      syncBtn.addEventListener('click', runSchoologySync);
+
+      recalcPreview();
+    })();
+  </script>
+</body>
+</html>

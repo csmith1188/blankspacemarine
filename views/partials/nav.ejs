@@ -1,0 +1,28 @@
+<nav class="top-nav" aria-label="Primary navigation">
+  <div class="top-nav-left">
+    <a href="/" class="nav-brand">
+      <span class="nav-emblem">BSM</span>
+      <span class="nav-title">BLANK SPACE MARINE</span>
+    </a>
+    <a href="/" class="nav-link <%= activeNav === 'game' ? 'active' : '' %>">Play</a>
+    <a href="/highscores" class="nav-link <%= activeNav === 'highscores' ? 'active' : '' %>">High Scores</a>
+    <% if (currentUser) { %>
+      <a href="/profile/<%= encodeURIComponent(currentUser.formbarId) %>" class="nav-link <%= activeNav === 'profile' ? 'active' : '' %>">My Profile</a>
+    <% } %>
+    <% if (isTeacher) { %>
+      <a href="/teacher" class="nav-link <%= activeNav === 'teacher' ? 'active' : '' %>">Teacher Panel</a>
+    <% } %>
+  </div>
+  <div class="top-nav-right">
+    <% if (currentUser) { %>
+      <a href="/profile/<%= encodeURIComponent(currentUser.formbarId) %>" class="nav-user-pill" title="View your profile">
+        <span class="nav-user-name"><%= currentUser.username %></span>
+        <span class="nav-user-id mono">#<%= currentUser.formbarId %></span>
+      </a>
+      <a href="/logout" class="btn btn-ghost btn-sm">Logout</a>
+    <% } else { %>
+      <span class="nav-guest-badge">GUEST MODE (SCORES NOT SAVED)</span>
+      <a href="/login" class="btn btn-primary btn-sm">Log in with Formbar</a>
+    <% } %>
+  </div>
+</nav>
